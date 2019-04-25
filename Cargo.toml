@@ -5,9 +5,7 @@ authors = ["Peter Coleman <peter.coleman143@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+bootloader = "0.5.1"
 
-[profile.dev]
-panic = "abort"
-
-[profile.release]
-panic = "abort"
+[package.metadata.bootimage]
+default-target = "x86_64-rust_os.json"
