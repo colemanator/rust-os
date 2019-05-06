@@ -1,6 +1,9 @@
+extern crate lazy_static;
+
 use volatile::Volatile;
-use core::fmt::Write;
 use core::fmt;
+use lazy_static::lazy_static;
+use spin::Mutex;
 
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
@@ -80,8 +83,6 @@ impl Writer {
         }
     }
 
-    fn new_line(&mut self) {/* TODO */}
-
     pub fn write_string(&mut self, s: &str) {
         for byte in s.bytes() {
             match byte {
@@ -110,17 +111,42 @@ impl fmt::Write for Writer {
     }
 }
 
+impl Writer {
+	fn new_line(&mut self) {
+		for row in 1..BUFFER_HEIGHT {
+			for col in 0..BUFFER_WIDTH {
+				self.buffer.chars[row - 1][col].write(
+					self.buffer.chars[row][col].read()
+				);
+			}
+		}
+
+		self.clear_row(BUFFER_HEIGHT - 1);
+		self.column_position = 0;
+	}
+}
+
+impl Writer {
+	fn clear_row(&mut self, row: usize) {
+		let blank = ScreenChar {
+			ascii_character: b' ',
+			color_code: self.color_code
+		};
+
+		for col in 0..BUFFER_WIDTH {
+			self.buffer.chars[row][col].write(blank);
+		}
+	}
+}
+
 impl Buffer {
     pub fn new() -> &'static mut Buffer {
         unsafe { &mut *(0xb8000 as *mut Buffer) }
     }
 }
 
-pub fn print_something() {
-    let mut writer = Writer::new();
-    
-    writer.write_byte(b'H');
-    writer.write_string("ello ");
-    writer.write_string("World! ");
-    write!(writer, "The numbers are {} and {}", 42, 1.0/3.0).unwrap();
+lazy_static! {
+	pub static ref WRITER: Mutex<Writer> = Mutex::new(
+		Writer::new()	
+	);
 }
