@@ -1,21 +1,30 @@
 #![no_std]
 #![cfg_attr(test, no_main)]
 #![feature(custom_test_frameworks)]
+#![feature(alloc_error_handler)]
 #![feature(abi_x86_interrupt)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
+
+extern crate alloc;
 
 use core::panic::PanicInfo;
 use x86_64::instructions::hlt;
 
 #[cfg(test)]
 use bootloader::{entry_point, BootInfo};
+use core::alloc::Layout;
+use linked_list_allocator::LockedHeap;
 
 pub mod serial;
 pub mod vga_buffer;
 pub mod interrupts;
 pub mod gdt;
 pub mod memory;
+pub mod allocator;
+
+#[global_allocator]
+static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
 #[cfg(test)]
 entry_point!(test_kernel_main);
@@ -74,4 +83,10 @@ pub fn exit_qemu(exit_code: QemuExitCode) {
 
 pub fn htl_loop() -> ! {
     loop { hlt(); }
+}
+
+
+#[alloc_error_handler]
+fn alloc_error_handler(layout: Layout) -> ! {
+    panic!("allocation error {:?}", layout)
 }
